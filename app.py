@@ -11,7 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
 
-# -------  BASE DE DATOS ---------
+# -------  CONFIGURAMOS LA BASE DE DATOS ------------------------------------------------------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS CONECTAMOS A LA BASE DE DATOS
 db_usuarios = SQLAlchemy(app)  # Cursor para la base de datos
 
@@ -28,10 +28,15 @@ class Usuarios(db_usuarios.Model):
 db_usuarios.create_all()
 db_usuarios.session.commit()
 
-usernames = []
 usuario = Usuarios.query.all()
-for user in usuario:
-    usernames.append(user.password)
+
+all_Usernames = []
+for names in usuario:
+    all_Usernames.append(names.username)
+# print(all_Usernames)  # Lista con todos los usernames de la tabla
+# -------  CONFIGURAMOS LA BASE DE DATOS. FIN ------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------
+
 
 @app.before_request
 def before_request():
@@ -41,7 +46,6 @@ def before_request():
         user = [x for x in usuario if x.id == session['user_id']][0]
         g.user = user
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -50,10 +54,23 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        user = [x for x in usuario if x.username == username][0]
+        if username in all_Usernames:  #Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
+            user = [x for x in usuario if x.username == username][0]
+        else:
+            user = False
+
+        # COMPROBAMOS QUE TIPO DE ACCESO TIENE EL USUARIO
         if user and user.password == password:
             session['user_id'] = user.id
-            return redirect(url_for('profile'))
+            session['user_access_Level'] = user.access_Level
+            if session['user_access_Level'] == 'admin':
+                return redirect(url_for('profile_admin'))
+            elif session['user_access_Level'] == 'cliente':
+                return redirect(url_for('profile_client'))
+            elif session['user_access_Level'] == 'proveedor':
+                return redirect(url_for('profile_dealer'))
+            else:
+                return redirect(url_for('login'))
 
         return redirect(url_for('login'))
 
@@ -66,6 +83,27 @@ def profile():
         return redirect(url_for('login'))
 
     return render_template('profile.html')
+
+@app.route('/profile_admin')
+def profile_admin():
+    if not g.user:
+        return redirect(url_for('login'))
+
+    return render_template('profile_admin.html')
+
+@app.route('/profile_client')
+def profile_client():
+    if not g.user:
+        return redirect(url_for('login'))
+
+    return render_template('profile_client.html')
+
+@app.route('/profile_dealer')
+def profile_dealer():
+    if not g.user:
+        return redirect(url_for('login'))
+
+    return render_template('profile_dealer.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
