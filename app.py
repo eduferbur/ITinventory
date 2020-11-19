@@ -6,26 +6,32 @@ from flask import (Flask,
     session,
     url_for
 )
-
-
-class User:
-    def __init__(self, id, username, password):
-        self.id = id
-        self.username = username
-        self.password = password
-
-    def __repr__(self):
-        return f'<User: {self.username}>'
-
-
-usuario = []
-usuario.append(User(id=1, username='Anthony', password='password'))
-usuario.append(User(id=2, username='Becca', password='secret'))
-usuario.append(User(id=3, username='Carlos', password='somethingsimple'))
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
 
+# -------  BASE DE DATOS ---------
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS CONECTAMOS A LA BASE DE DATOS
+db_usuarios = SQLAlchemy(app)  # Cursor para la base de datos
+
+class Usuarios(db_usuarios.Model):
+    __tablename__ = "Usuarios"  # Creamos la estructura, la tabla
+    id = db_usuarios.Column(db_usuarios.Integer, primary_key=True)  # Columna ID con una clave única
+    username = db_usuarios.Column(db_usuarios.String(200))
+    password = db_usuarios.Column(db_usuarios.String(200))
+    access_Level = db_usuarios.Column(db_usuarios.String(10))
+
+    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+        return '<User %r>' % self.username
+
+db_usuarios.create_all()
+db_usuarios.session.commit()
+
+usernames = []
+usuario = Usuarios.query.all()
+for user in usuario:
+    usernames.append(user.password)
 
 @app.before_request
 def before_request():

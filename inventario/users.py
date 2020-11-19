@@ -13,6 +13,7 @@ __maintainer__ = "Yo mismo"
 __email__ = "eduferbur@gmail.com"
 __status__ = "Developer"
 
+from flask_sqlalchemy import SQLAlchemy
 
 class User:
     def __init__(self, name, cif, phone, address):
