@@ -16,26 +16,59 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS 
 db_usuarios = SQLAlchemy(app)  # Cursor para la base de datos
 
 class Usuarios(db_usuarios.Model):
-    __tablename__ = "Usuarios"  # Creamos la estructura, la tabla
+    __tablename__ = "Users"  # Creamos la estructura, la tabla
     id = db_usuarios.Column(db_usuarios.Integer, primary_key=True)  # Columna ID con una clave única
     username = db_usuarios.Column(db_usuarios.String(200))
     password = db_usuarios.Column(db_usuarios.String(200))
-    access_Level = db_usuarios.Column(db_usuarios.String(10))
+    rol_id = db_usuarios.Column(db_usuarios.Integer)
 
     def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
         return '<User %r>' % self.username
 
 db_usuarios.create_all()
 db_usuarios.session.commit()
+# Lecturas de la tabla all_usuarios
+all_usuarios = Usuarios.query.all()
 
-usuario = Usuarios.query.all()
-
+# Extrayendo la lista total de usernames
 all_Usernames = []
-for names in usuario:
+for names in all_usuarios:
     all_Usernames.append(names.username)
+
+En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()
+print(En_lista)
+
+
+
 # print(all_Usernames)  # Lista con todos los usernames de la tabla
 # -------  CONFIGURAMOS LA BASE DE DATOS. FIN ------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------------
+
+
+# -------  CREAMOS PROVEEDORES ------------------------------------------------------
+nombres_proveedores = []
+all_proveedores = Usuarios.query.filter(Usuarios.rol_id == 3)
+# for names in all_usuarios if names.access_Level=="proveedor":
+for names in all_proveedores:
+    nombres_proveedores.append(names.username)
+print(nombres_proveedores)
+
+class proveedor():
+    def __init__(self, username, nombre_empresa=None, cif=None, direccion=None, IVA=None):
+        self.__username = username
+        self.__nombre = nombre_empresa
+        self.__cif = cif
+        self.__direccion = direccion
+        self.__IVA = IVA
+
+    def facturacion(self):
+        """Calculamos el total de los pedidos realizados"""
+        pass
+
+    def descuento(self):
+        """El proveedor podrá modificar el descuento de sus producto VOLVER A PEDIR CONTRASEÑA"""
+        pass
+
 
 
 @app.before_request
@@ -43,7 +76,7 @@ def before_request():
     g.user = None
 
     if 'user_id' in session:
-        user = [x for x in usuario if x.id == session['user_id']][0]
+        user = [x for x in all_usuarios if x.id == session['user_id']][0]
         g.user = user
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -55,19 +88,19 @@ def login():
         password = request.form['password']
 
         if username in all_Usernames:  #Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
-            user = [x for x in usuario if x.username == username][0]
+            user = [x for x in all_usuarios if x.username == username][0]
         else:
             user = False
 
         # COMPROBAMOS QUE TIPO DE ACCESO TIENE EL USUARIO
         if user and user.password == password:
             session['user_id'] = user.id
-            session['user_access_Level'] = user.access_Level
-            if session['user_access_Level'] == 'admin':
+            session['user_rol_id'] = user.rol_id
+            if session['user_rol_id'] == 1:
                 return redirect(url_for('profile_admin'))
-            elif session['user_access_Level'] == 'cliente':
+            elif session['user_rol_id'] == 2:
                 return redirect(url_for('profile_client'))
-            elif session['user_access_Level'] == 'proveedor':
+            elif session['user_rol_id'] == 3:
                 return redirect(url_for('profile_dealer'))
             else:
                 return redirect(url_for('login'))
