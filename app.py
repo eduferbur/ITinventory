@@ -7,23 +7,19 @@ from flask import (Flask,
     url_for
 )
 from flask_sqlalchemy import SQLAlchemy
+from inventario.tablas_usuarios import Usuarios  # Recibo las clases con las tablas usuarios, admin, clientes y proveedores
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
 
 # -------  CONFIGURAMOS LA BASE DE DATOS ------------------------------------------------------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS CONECTAMOS A LA BASE DE DATOS
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # ESTO LO RECOMIENTA LA WEB DE SQLALCHEMY
 db_usuarios = SQLAlchemy(app)  # Cursor para la base de datos
 
-class Usuarios(db_usuarios.Model):
-    __tablename__ = "Users"  # Creamos la estructura, la tabla
-    id = db_usuarios.Column(db_usuarios.Integer, primary_key=True)  # Columna ID con una clave única
-    username = db_usuarios.Column(db_usuarios.String(200))
-    password = db_usuarios.Column(db_usuarios.String(200))
-    rol_id = db_usuarios.Column(db_usuarios.Integer)
 
-    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
-        return '<User %r>' % self.username
+
+
 
 db_usuarios.create_all()
 db_usuarios.session.commit()
@@ -51,9 +47,9 @@ all_proveedores = Usuarios.query.filter(Usuarios.rol_id == 3)
 # for names in all_usuarios if names.access_Level=="proveedor":
 for names in all_proveedores:
     nombres_proveedores.append(names.username)
-print(nombres_proveedores)
+# print(nombres_proveedores)
 
-class proveedor():
+'''class proveedor():
     def __init__(self, username, nombre_empresa=None, cif=None, direccion=None, IVA=None):
         self.__username = username
         self.__nombre = nombre_empresa
@@ -67,7 +63,7 @@ class proveedor():
 
     def descuento(self):
         """El proveedor podrá modificar el descuento de sus producto VOLVER A PEDIR CONTRASEÑA"""
-        pass
+        pass'''
 
 
 
@@ -101,7 +97,7 @@ def login():
             elif session['user_rol_id'] == 2:
                 return redirect(url_for('profile_client'))
             elif session['user_rol_id'] == 3:
-                return redirect(url_for('profile_dealer'))
+                return redirect(url_for('profile_supplier'))
             else:
                 return redirect(url_for('login'))
 
@@ -131,12 +127,12 @@ def profile_client():
 
     return render_template('profile_client.html')
 
-@app.route('/profile_dealer')
-def profile_dealer():
+@app.route('/profile_supplier')
+def profile_supplier():
     if not g.user:
         return redirect(url_for('login'))
 
-    return render_template('profile_dealer.html')
+    return render_template('profile_supplier.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
