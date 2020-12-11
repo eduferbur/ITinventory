@@ -7,7 +7,7 @@ from flask import (Flask,
     url_for
 )
 from flask_sqlalchemy import SQLAlchemy
-from inventario.tablas_usuarios import Usuarios  # Recibo las clases con las tablas usuarios, admin, clientes y proveedores
+# from inventario.tablas_usuarios import Usuarios  # NO FUNCIONA. Recibo las clases con las tablas usuarios, admin, clientes y proveedores
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
@@ -17,18 +17,25 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # ESTO LO RECOMIENTA LA WEB DE SQLALCHEMY
 db_usuarios = SQLAlchemy(app)  # Cursor para la base de datos
 
+class Usuarios(db_usuarios.Model):
+    __tablename__ = "Users"  # Creamos la estructura, la tabla
+    id = db_usuarios.Column(db_usuarios.Integer, primary_key=True)  # Columna ID con una clave única
+    username = db_usuarios.Column(db_usuarios.String(200))
+    password = db_usuarios.Column(db_usuarios.String(200))
+    rol_id = db_usuarios.Column(db_usuarios.Integer)
 
-
+    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+        return '<User %r>' % self.username
 
 
 db_usuarios.create_all()
 db_usuarios.session.commit()
 # Lecturas de la tabla all_usuarios
-all_usuarios = Usuarios.query.all()
+all_users = Usuarios.query.all()
 
 # Extrayendo la lista total de usernames
 all_Usernames = []
-for names in all_usuarios:
+for names in all_users:
     all_Usernames.append(names.username)
 
 En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()
@@ -72,7 +79,7 @@ def before_request():
     g.user = None
 
     if 'user_id' in session:
-        user = [x for x in all_usuarios if x.id == session['user_id']][0]
+        user = [x for x in all_users if x.id == session['user_id']][0]
         g.user = user
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -84,7 +91,7 @@ def login():
         password = request.form['password']
 
         if username in all_Usernames:  #Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
-            user = [x for x in all_usuarios if x.username == username][0]
+            user = [x for x in all_users if x.username == username][0]
         else:
             user = False
 

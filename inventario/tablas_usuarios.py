@@ -19,7 +19,7 @@ __email__ = "eduferbur@gmail.com"
 __status__ = "Developer"
 
 
-from app import db_usuarios
+# from app import db_usuarios # No funciona
 
 class Usuarios(db_usuarios.Model):
     __tablename__ = "Users"  # Creamos la estructura, la tabla
