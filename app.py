@@ -16,23 +16,66 @@ app.secret_key = 'somesecretkeythatonlyishouldknow'
 # -------  CONFIGURAMOS LA BASE DE DATOS ------------------------------------------------------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS CONECTAMOS A LA BASE DE DATOS
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # ESTO LO RECOMIENTA LA WEB DE SQLALCHEMY
-db_usuarios = SQLAlchemy(app)  # Cursor para la base de datos
+db = SQLAlchemy(app)  # Cursor para la base de datos
 
-class Usuarios(db_usuarios.Model):
-    __tablename__ = "Users"  # Creamos la estructura, la tabla
-    id = db_usuarios.Column(db_usuarios.Integer, primary_key=True)  # Columna ID con una clave única
-    username = db_usuarios.Column(db_usuarios.String(200))
-    password = db_usuarios.Column(db_usuarios.String(200))
-    rol_id = db_usuarios.Column(db_usuarios.Integer)
+class Usuarios(db.Model):
+    __tablename__ = "USERS"  # Creamos la estructura, la tabla
+    id = db.Column(db.Integer, primary_key=True)  # Columna ID con una clave única
+    username = db.Column(db.String(200))
+    password = db.Column(db.String(200))
+    rol_id = db.Column(db.Integer)
 
     def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
         return '<User %r>' % self.username
 
+class Admins(db.Model):
+    __tablename__ = "ADMINS"  # Creamos la estructura, la tabla
+    id = db.Column(db.Integer, primary_key=True)
+    dni = db.Column(db.String(200))
+    nombre = db.Column(db.String(200))
+    username = db.Column(db.String(200))
 
-db_usuarios.create_all()
-db_usuarios.session.commit()
+    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+        return f'Administrador {self.nombre}'
+
+class Clients(db.Model):
+    __tablename__ = "CLIENTS"  # Creamos la estructura, la tabla
+    id = db.Column(db.Integer, primary_key=True)
+    cif = db.Column(db.String(200))
+    nombreFiscal = db.Column(db.String(200))
+    descuento = db.Column(db.Float)
+    username = db.Column(db.String(200))
+
+    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+        return f'Cliente {self.nombreFiscal} con CIF {self.cif}'
+
+class Suppliers(db.Model):
+    __tablename__ = "SUPPLIERS"  # Creamos la estructura, la tabla
+    id = db.Column(db.Integer, primary_key=True)
+    cif = db.Column(db.String(200))
+    nombreFiscal = db.Column(db.String(200))
+    Telefono = db.Column(db.Integer)
+    direccion = db.Column(db.String(200))
+    descuento = db.Column(db.Float)
+    facturacion = db.Column(db.Float)
+    marcas = db.Column(db.String(200))
+    username = db.Column(db.String(200))
+
+    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+        return f'Proveedor {self.nombreFiscal} con CIF {self.cif}'
+
+    def facturacion(self):
+        """Calculamos el total de los pedidos realizados"""
+        pass
+
+db.create_all()
+db.session.commit()
 # Lecturas de la tabla all_usuarios
 all_users = Usuarios.query.all()
+all_admins = Admins.query.all()
+all_clients = Clients.query.all()
+all_suppliers = Suppliers.query.all()
+print(all_suppliers)
 
 # Extrayendo la lista total de usernames
 all_Usernames = []
@@ -57,22 +100,6 @@ for names in all_proveedores:
     nombres_proveedores.append(names.username)
 # print(nombres_proveedores)
 
-'''class proveedor():
-    def __init__(self, username, nombre_empresa=None, cif=None, direccion=None, IVA=None):
-        self.__username = username
-        self.__nombre = nombre_empresa
-        self.__cif = cif
-        self.__direccion = direccion
-        self.__IVA = IVA
-
-    def facturacion(self):
-        """Calculamos el total de los pedidos realizados"""
-        pass
-
-    def descuento(self):
-        """El proveedor podrá modificar el descuento de sus producto VOLVER A PEDIR CONTRASEÑA"""
-        pass'''
-
 
 
 @app.before_request # Aun no sé para qué hace esto
@@ -89,40 +116,46 @@ def login():
     if request.method == 'POST':
         # session.pop('user_id', None)
 
-        username = request.form['username']
-        password = request.form['password']
+        session['username'] = request.form['username'] # Recogemos el username introducido.
+        password = request.form['password'] # Recogemos la contraseña introducida
 
-        if username in all_Usernames:  #Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
-            user = [x for x in all_users if x.username == username][0]
+        if session['username'] in all_Usernames:  #Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
+            # Almacenamos todos los datos del usuario actual
+            user = [x for x in all_users if x.username == session['username']][0]
+            # User será un registro de la tabla "Users"
+
+            # COMPROBAMOS QUE COINCIDE USUARIO Y CONTRASEÑA Y EL TIPO DE ACCESO
+            if user and user.password == password:
+                session['user_id'] = user.id
+                session['user_rol_id'] = user.rol_id
+
+                if session['user_rol_id'] == 1:
+                    return redirect(url_for('profile_admin'))
+                elif session['user_rol_id'] == 2:
+                    return redirect(url_for('profile_client'))
+                elif session['user_rol_id'] == 3:
+                    return redirect(url_for('profile_supplier'))
+                else:
+                    print(f"Error, user_rol_id={session['user_id']}  no válido")
+                    session['user_id'] = None
+            else:
+                user = False  # Si no coincide usuario y contraseña, borro el usuario de sesion
         else:
             user = False
-        print(session, "user", user, "login2")
-        # COMPROBAMOS QUE TIPO DE ACCESO TIENE EL USUARIO
-        if user and user.password == password:
-            session['user_id'] = user.id
-            session['user_rol_id'] = user.rol_id
-            if session['user_rol_id'] == 1:
-                return redirect(url_for('profile_admin'))
-            elif session['user_rol_id'] == 2:
-                return redirect(url_for('profile_client'))
-            elif session['user_rol_id'] == 3:
-                return redirect(url_for('profile_supplier'))
-            else:
-                return redirect(url_for('login'))
-        else:
-            return redirect(url_for('login'))
 
+    # Si llego aquí, el login no ha ido bien y calgo login de nuevo
+    session.pop("user", None)
+    session.pop('username', None)
     return render_template('login.html')
 
 @app.route('/logout')  # Cerrar session.
 def logout():
-    print(session, "logout")
     session.pop("user", None)
     return redirect(url_for('login'))
 
+
 @app.route('/profile')
 def profile():
-    print(session, "profile")
     if not g.user:
         return redirect(url_for('login'))
 
@@ -132,21 +165,24 @@ def profile():
 def profile_admin():
     if not g.user:
         return redirect(url_for('login'))
-
+    # Cargamos en g.user los datos del admin actual.
+    g.user = [x for x in all_admins if x.username == session['username']][0]
     return render_template('profile_admin.html')
 
 @app.route('/profile_client')
 def profile_client():
     if not g.user:
         return redirect(url_for('login'))
-
+    # Cargamos en g.user los datos del cliente actual.
+    g.user = [x for x in all_clients if x.username == session['username']][0]
     return render_template('profile_client.html')
 
 @app.route('/profile_supplier')
 def profile_supplier():
     if not g.user:
         return redirect(url_for('login'))
-
+    # Cargamos en g.user los datos del proveedor actual.
+    g.user = [x for x in all_suppliers if x.username == session['username']][0]
     return render_template('profile_supplier.html')
 
 if __name__ == '__main__':
