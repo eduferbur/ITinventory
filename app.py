@@ -1,21 +1,21 @@
 from flask import (Flask,
-    g,
-    redirect,
-    render_template,
-    request,
-    session,  #gestion de usuarios frontend-backend
-    url_for
-)
+                   g,
+                   redirect,
+                   render_template,
+                   request,
+                   session,  # gestion de usuarios frontend-backend
+                   url_for
+                   )
 
 from flask_sqlalchemy import SQLAlchemy
-# from inventario.tablas_usuarios import Usuarios  # NO FUNCIONA. Recibo las clases con las tablas usuarios, admin, clientes y proveedores
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
 
 # -------  CONFIGURAMOS LA BASE DE DATOS ------------------------------------------------------
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS CONECTAMOS A LA BASE DE DATOS
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # ESTO LO RECOMIENTA LA WEB DE SQLALCHEMY
+# app.config['SQLALCHEMY_BINDS'] = {'inventary': 'sqlite:///database/inventary.db'}  # NOS CONECTAMOS A OTRA DB
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # ESTO LO RECOMIENTA LA WEB DE SQLALCHEMY
 db = SQLAlchemy(app)  # Cursor para la base de datos
 
 class Usuarios(db.Model):
@@ -25,8 +25,9 @@ class Usuarios(db.Model):
     password = db.Column(db.String(200))
     rol_id = db.Column(db.Integer)
 
-    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
         return '<User %r>' % self.username
+
 
 class Admins(db.Model):
     __tablename__ = "ADMINS"  # Creamos la estructura, la tabla
@@ -35,8 +36,9 @@ class Admins(db.Model):
     nombre = db.Column(db.String(200))
     username = db.Column(db.String(200))
 
-    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
         return f'Administrador {self.nombre}'
+
 
 class Clients(db.Model):
     __tablename__ = "CLIENTS"  # Creamos la estructura, la tabla
@@ -46,8 +48,9 @@ class Clients(db.Model):
     descuento = db.Column(db.Float)
     username = db.Column(db.String(200))
 
-    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
         return f'Cliente {self.nombreFiscal} con CIF {self.cif}'
+
 
 class Suppliers(db.Model):
     __tablename__ = "SUPPLIERS"  # Creamos la estructura, la tabla
@@ -58,38 +61,60 @@ class Suppliers(db.Model):
     direccion = db.Column(db.String(200))
     descuento = db.Column(db.Float)
     facturacion = db.Column(db.Float)
-    marcas = db.Column(db.String(200))
     username = db.Column(db.String(200))
 
-    def __repr__(self): # Sacado de la web de Alchemy, para que me dé el nombre
+    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
         return f'Proveedor {self.nombreFiscal} con CIF {self.cif}'
 
     def facturacion(self):
         """Calculamos el total de los pedidos realizados"""
         pass
 
+
+class Inventario(db.Model):
+    __tablename__ = "INVENTARIO"  # Creamos la estructura, la tabla
+    id = db.Column(db.Integer, primary_key=True)
+    objeto = db.Column(db.String(200))
+    caracteristicas = db.Column(db.String(200))
+    fabricante = db.Column(db.String(200))
+    ref = db.Column(db.String(200))
+    stock = db.Column(db.String(200))
+
+    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
+        return f'Artículo: {self.caracteristicas}: {self.objeto}'
+
+class Pedidos(db.Model):
+    __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.String(200))
+    comprador = db.Column(db.String(200))
+    proveedor = db.Column(db.String(200))
+    total = db.Column(db.String(200))
+
+    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
+        return f'Pedido del: {self.fecha}, de {self.comprador} a {self.proveedor}. Total: {self.total} €'
+
 db.create_all()
 db.session.commit()
-# Lecturas de la tabla all_usuarios
+# Lecturas de las tablas y almacenado de sus registros
 all_users = Usuarios.query.all()
 all_admins = Admins.query.all()
 all_clients = Clients.query.all()
 all_suppliers = Suppliers.query.all()
-print(all_suppliers)
+all_devices = Inventario.query.all()
+all_Orders = Pedidos.query.all()
 
 # Extrayendo la lista total de usernames
 all_Usernames = []
 for names in all_users:
     all_Usernames.append(names.username)
 
-En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()
-print(En_lista)
+En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()  # Prueba de filtrado directamente en la tabla
+# print(En_lista)
 
 
-
-# print(all_Usernames)  # Lista con todos los usernames de la tabla
 # -------  CONFIGURAMOS LA BASE DE DATOS. FIN ------------------------------------------------------
-# ------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
 
 # -------  CREAMOS PROVEEDORES ------------------------------------------------------
@@ -98,11 +123,9 @@ all_proveedores = Usuarios.query.filter(Usuarios.rol_id == 3)
 # for names in all_usuarios if names.access_Level=="proveedor":
 for names in all_proveedores:
     nombres_proveedores.append(names.username)
-# print(nombres_proveedores)
 
 
-
-@app.before_request # Aun no sé para qué hace esto
+@app.before_request  # Aun no sé para qué hace esto
 def before_request():
     print(session, "loginbefore")
     g.user = None
@@ -110,16 +133,19 @@ def before_request():
     if 'user_id' in session:
         user = [x for x in all_users if x.id == session['user_id']][0]
         g.user = user
+        pedidos = [x for x in all_Orders if x.comprador == g.user.username]
+        print(pedidos)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         # session.pop('user_id', None)
 
-        session['username'] = request.form['username'] # Recogemos el username introducido.
-        password = request.form['password'] # Recogemos la contraseña introducida
+        session['username'] = request.form['username']  # Recogemos el username introducido.
+        password = request.form['password']  # Recogemos la contraseña introducida
 
-        if session['username'] in all_Usernames:  #Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
+        if session['username'] in all_Usernames:  # Si nos llega un usuario de la tabla, lo guardamos, si no, falso.
             # Almacenamos todos los datos del usuario actual
             user = [x for x in all_users if x.username == session['username']][0]
             # User será un registro de la tabla "Users"
@@ -148,6 +174,7 @@ def login():
     session.pop('username', None)
     return render_template('login.html')
 
+
 @app.route('/logout')  # Cerrar session.
 def logout():
     session.pop("user", None)
@@ -161,6 +188,7 @@ def profile():
 
     return render_template('profile.html')
 
+
 @app.route('/profile_admin')
 def profile_admin():
     if not g.user:
@@ -168,6 +196,7 @@ def profile_admin():
     # Cargamos en g.user los datos del admin actual.
     g.user = [x for x in all_admins if x.username == session['username']][0]
     return render_template('profile_admin.html')
+
 
 @app.route('/profile_client')
 def profile_client():
@@ -177,6 +206,7 @@ def profile_client():
     g.user = [x for x in all_clients if x.username == session['username']][0]
     return render_template('profile_client.html')
 
+
 @app.route('/profile_supplier')
 def profile_supplier():
     if not g.user:
@@ -184,6 +214,7 @@ def profile_supplier():
     # Cargamos en g.user los datos del proveedor actual.
     g.user = [x for x in all_suppliers if x.username == session['username']][0]
     return render_template('profile_supplier.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
