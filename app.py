@@ -3,9 +3,10 @@ from flask import (Flask,
     redirect,
     render_template,
     request,
-    session,
+    session,  #gestion de usuarios frontend-backend
     url_for
 )
+
 from flask_sqlalchemy import SQLAlchemy
 # from inventario.tablas_usuarios import Usuarios  # NO FUNCIONA. Recibo las clases con las tablas usuarios, admin, clientes y proveedores
 
@@ -74,8 +75,9 @@ for names in all_proveedores:
 
 
 
-@app.before_request
+@app.before_request # Aun no sé para qué hace esto
 def before_request():
+    print(session, "loginbefore")
     g.user = None
 
     if 'user_id' in session:
@@ -85,7 +87,7 @@ def before_request():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        session.pop('user_id', None)
+        # session.pop('user_id', None)
 
         username = request.form['username']
         password = request.form['password']
@@ -94,7 +96,7 @@ def login():
             user = [x for x in all_users if x.username == username][0]
         else:
             user = False
-
+        print(session, "user", user, "login2")
         # COMPROBAMOS QUE TIPO DE ACCESO TIENE EL USUARIO
         if user and user.password == password:
             session['user_id'] = user.id
@@ -107,14 +109,20 @@ def login():
                 return redirect(url_for('profile_supplier'))
             else:
                 return redirect(url_for('login'))
-
-        return redirect(url_for('login'))
+        else:
+            return redirect(url_for('login'))
 
     return render_template('login.html')
 
+@app.route('/logout')  # Cerrar session.
+def logout():
+    print(session, "logout")
+    session.pop("user", None)
+    return redirect(url_for('login'))
 
 @app.route('/profile')
 def profile():
+    print(session, "profile")
     if not g.user:
         return redirect(url_for('login'))
 
