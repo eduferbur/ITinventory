@@ -1,24 +1,48 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Profile Page</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
-    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
   </head>
-  <body>
-    <section class="hero is-success is-fullheight">
-      <div class="hero-body">
-        <div class="container">
-          <h1 class="title">
-            {{g.user.username}}'s Profile
-          </h1>
-          <h2 class="subtitle">
-            You are user number #{{g.user.id}}
-          </h2>
-        </div>
-      </div>
-    </section>
-  </body>
+<body>
+
+    <header>
+        <nav>
+            <ul>
+                <li><a href="index.html"> Inicio</a></li>
+                <li><a href="micuenta.html"> Mi cuenta</a></li>
+                <li><a href="nosotros.html"> Sobre Nosotros</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <article>
+            <h1>
+                Esta página es el inicio
+            </h1>
+        <section>
+            <h2>
+                Y esta es nuestra sección article
+            </h2>
+            <p>Los elementos de encabezado implementan seis niveles blap>
+        </section>
+        <section>
+            <p>
+                Para hacer Login click <a href="/login">aquí</a>
+            </p>
+
+        </section>
+    </article>
+
+    <aside>
+        <h2> Esto es el aside</h2>
+        <p>
+        Pues eso, el aside
+        </p>
+    </aside>
+
+    <footer>
+        <h4>Copyright - Todos los derechos reservados</h4>
+        <p>Para más información <a href="micuenta.html">Mi cuenta</a></p>
+    </footer>
+</body>
 </html>

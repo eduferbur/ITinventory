@@ -1,5 +1,5 @@
 from flask import (Flask,
-                   g,
+                   g, # Variables globales entre app.py y html
                    redirect,
                    render_template,
                    request,
@@ -86,7 +86,7 @@ class Inventario(db.Model):
 class Pedidos(db.Model):
     __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
     id = db.Column(db.Integer, primary_key=True)
-    fecha = db.Column(db.String(200))
+    fecha = db.Column(db.DateTime)
     comprador = db.Column(db.String(200))
     proveedor = db.Column(db.String(200))
     total = db.Column(db.String(200))
@@ -136,6 +136,9 @@ def before_request():
         pedidos = [x for x in all_Orders if x.comprador == g.user.username]
         print(pedidos)
 
+@app.route('/')
+def home():
+    return render_template("index.html")  # Vincula el HTML
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
