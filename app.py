@@ -1,5 +1,6 @@
+import matplotlib
 from flask import (Flask,
-                   g, # Variables globales entre app.py y html
+                   g,  # Variables globales entre app.py y html
                    redirect,
                    render_template,
                    request,
@@ -8,6 +9,10 @@ from flask import (Flask,
                    )
 
 from flask_sqlalchemy import SQLAlchemy
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from matplotlib import dates as mpl_dates
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
@@ -17,6 +22,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database/usuarios.db'  # NOS 
 # app.config['SQLALCHEMY_BINDS'] = {'inventary': 'sqlite:///database/inventary.db'}  # NOS CONECTAMOS A OTRA DB
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # ESTO LO RECOMIENTA LA WEB DE SQLALCHEMY
 db = SQLAlchemy(app)  # Cursor para la base de datos
+
 
 class Usuarios(db.Model):
     __tablename__ = "USERS"  # Creamos la estructura, la tabla
@@ -83,6 +89,7 @@ class Inventario(db.Model):
     def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
         return f'Artículo: {self.caracteristicas}: {self.objeto}'
 
+
 class Pedidos(db.Model):
     __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
     id = db.Column(db.Integer, primary_key=True)
@@ -93,6 +100,7 @@ class Pedidos(db.Model):
 
     def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
         return f'Pedido del: {self.fecha}, de {self.comprador} a {self.proveedor}. Total: {self.total} €'
+
 
 db.create_all()
 db.session.commit()
@@ -118,13 +126,27 @@ En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()  # Prueba
 
 
 # -------  CREAMOS PROVEEDORES ------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 nombres_proveedores = []
 all_proveedores = Usuarios.query.filter(Usuarios.rol_id == 3)
 # for names in all_usuarios if names.access_Level=="proveedor":
 for names in all_proveedores:
     nombres_proveedores.append(names.username)
 
+# ------- PLOTS ---------
+# --------------------------------------------------------------------------------------------------
+plt.style.use('seaborn')
+ejeX_meses = ['Ene.', 'Febr.', 'Marz.', 'Abril', 'Mayo', 'Jun.', 'Jul.', 'Agost.',
+              'Sept.', 'Oct.', 'Nov.', 'Dic.'
+              ]
+y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
+plot = plt.plot_date(ejeX_meses, y)
+plt.show()
+
+
+# ------- FLASK APP ---------
+# --------------------------------------------------------------------------------------------------
 @app.before_request  # Aun no sé para qué hace esto
 def before_request():
     print(session, "loginbefore")
@@ -136,9 +158,11 @@ def before_request():
         pedidos = [x for x in all_Orders if x.comprador == g.user.username]
         print(pedidos)
 
+
 @app.route('/')
 def home():
     return render_template("index.html")  # Vincula el HTML
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
