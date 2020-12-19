@@ -9,14 +9,19 @@ from flask import (Flask,
                     Response
                    )
 
+from matplotlib.figure import Figure
+import io
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import random
+
 from flask_sqlalchemy import SQLAlchemy
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib import dates as mpl_dates
 from datetime import datetime, date, time, timedelta
-from matplotlib.figure import Figure
-import io
+
+
 
 
 app = Flask(__name__)
@@ -82,7 +87,7 @@ class Suppliers(db.Model):
         pass
 
 
-class Inventario(db.Model):
+'''class Inventario(db.Model):
     __tablename__ = "INVENTARIO"  # Creamos la estructura, la tabla
     id = db.Column(db.Integer, primary_key=True)
     objeto = db.Column(db.String(200))
@@ -92,10 +97,10 @@ class Inventario(db.Model):
     stock = db.Column(db.String(200))
 
     def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
-        return f'Artículo: {self.caracteristicas}: {self.objeto}'
+        return f'Artículo: {self.caracteristicas}: {self.objeto}'''
 
 
-class Pedidos(db.Model):
+'''class Pedidos(db.Model):
     __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime)
@@ -114,8 +119,8 @@ all_users = Usuarios.query.all()
 all_admins = Admins.query.all()
 all_clients = Clients.query.all()
 all_suppliers = Suppliers.query.all()
-all_devices = Inventario.query.all()
-all_Orders = Pedidos.query.all()
+# all_devices = Inventario.query.all()
+# all_Orders = Pedidos.query.all()
 
 
 # Extrayendo la lista total de usernames
@@ -171,13 +176,20 @@ df_resumen_compra_venta.sort_values('fecha', inplace=True)
 
 inventario_stock_min = 2
 df_inventario_reponer = df_inventario[(df_inventario["stock"] <= inventario_stock_min)] # Elementos que necesitan ser repuestos
-
+del df_inventario_reponer['id']
 
 print(df_resumen_compra_venta)
 print(df_inventario_reponer)
 
+# Extraemos la info del resumen compra/venta para la tabla del admin.
+compras_fechas = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'compra'].index)
+compras_totales = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'compra']['total'])
+
+ventas_fechas = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'venta'].index)
+ventas_totales = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'venta']['total'])
+
 '''plt.style.use('seaborn')
-plot = plt.plot_date(df_comprasGR.index, df_compras['total'], linestyle='solid') # Creamos la tabla con los meses y los datos de y
+plot_prueba = plt.plot_date(fechas, totales, linestyle='solid') # Creamos la tabla con los meses y los datos de y
 plt.gcf().autofmt_xdate()
 
 date_format = mpl_dates.DateFormatter('%b, %d %Y')
@@ -195,8 +207,7 @@ def before_request():
     if 'user_id' in session:
         user = [x for x in all_users if x.id == session['user_id']][0]
         g.user = user
-        pedidos = [x for x in all_Orders if x.comprador == g.user.username]
-        # print(pedidos)
+
 
 
 @app.route('/')
@@ -251,9 +262,6 @@ def logout():
 
 @app.route('/profile')
 def profile():
-    if not g.user:
-        return redirect(url_for('login'))
-
     return render_template('profile.html')
 
 
@@ -263,8 +271,10 @@ def profile_admin():
         return redirect(url_for('login'))
     # Cargamos en g.user los datos del admin actual.
     g.user = [x for x in all_admins if x.username == session['username']][0]
+
     print(df_resumen_compra_venta)
-    return render_template('profile_admin.html')
+    return render_template('profile_admin.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")])
+    # return render_template('profile_admin.html')
 
 
 @app.route('/profile_client')
@@ -291,6 +301,24 @@ def profile_supplier():
     ventas_proveedor = df_pedidos[(df_pedidos["proveedor"] == g.user.username)]
     print(ventas_proveedor)
     return render_template('profile_supplier.html')
+
+
+
+@app.route('/plot.png')
+def plot_png():
+    fig = crear_grafica(compras_fechas, compras_totales)
+    output = io.BytesIO()
+    FigureCanvas(fig).print_png(output)
+    return Response(output.getvalue(), mimetype='image/png')
+
+def crear_grafica(A_eje_x, A_eje_y):
+    fig = Figure()
+    axis = fig.add_subplot(1, 1, 1)
+    xs = A_eje_x
+    ys = A_eje_y
+    axis.plot(xs, ys)
+    return fig
+
 
 
 if __name__ == '__main__':
