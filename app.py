@@ -1,4 +1,4 @@
-import matplotlib
+
 from flask import (Flask,
                    g,  # Variables globales entre app.py y html
                    redirect,
@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib import dates as mpl_dates
+from datetime import datetime, date, time, timedelta
+
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
@@ -90,7 +92,7 @@ class Inventario(db.Model):
         return f'Artículo: {self.caracteristicas}: {self.objeto}'
 
 
-class Pedidos(db.Model):
+'''class Pedidos(db.Model):
     __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime)
@@ -99,7 +101,7 @@ class Pedidos(db.Model):
     total = db.Column(db.String(200))
 
     def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
-        return f'Pedido del: {self.fecha}, de {self.comprador} a {self.proveedor}. Total: {self.total} €'
+        return f'Pedido del: {self.fecha}, de {self.comprador} a {self.proveedor}. Total: {self.total} €'''
 
 
 db.create_all()
@@ -110,13 +112,15 @@ all_admins = Admins.query.all()
 all_clients = Clients.query.all()
 all_suppliers = Suppliers.query.all()
 all_devices = Inventario.query.all()
-all_Orders = Pedidos.query.all()
+# all_Orders = Pedidos.query.all()
+
 
 # Extrayendo la lista total de usernames
 all_Usernames = []
 for names in all_users:
     all_Usernames.append(names.username)
 
+print('NOMMMBRES', all_Usernames)
 En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()  # Prueba de filtrado directamente en la tabla
 # print(En_lista)
 
@@ -135,15 +139,31 @@ for names in all_proveedores:
 
 # ------- PLOTS ---------
 # --------------------------------------------------------------------------------------------------
-plt.style.use('seaborn')
-ejeX_meses = ['Ene.', 'Febr.', 'Marz.', 'Abril', 'Mayo', 'Jun.', 'Jul.', 'Agost.',
-              'Sept.', 'Oct.', 'Nov.', 'Dic.'
-              ]
-y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+# Preparamos la TABLA PEDIDOS
+df_pedidos = pd.read_sql_table('PEDIDOS', con=db.engine)
+df_pedidos['fecha'] = pd.to_datetime(df_pedidos['fecha'], format='%Y-%m-%d %H:%M:%S')
+df_pedidos.sort_values('fecha', inplace=True) # el inplace hace: df['fecha'] = df.sort...
 
-plot = plt.plot_date(ejeX_meses, y)
-plt.show()
 
+
+df_compras = df_pedidos[(df_pedidos["comprador"] == 'eduferbur') | (df_pedidos["comprador"] == 'cristian')]
+print(df_compras)
+df_comprasGR = df_compras.groupby(pd.Grouper(key='fecha', freq="M")).agg({"total": 'sum'})
+# del df_comprasGR['id']
+df_comprasGR.index = pd.to_datetime(df_comprasGR.index, format='%Y-%m-%d')
+print(df_comprasGR)
+
+df_ventas = df_pedidos[(df_pedidos["comprador"] != 'eduferbur') & (df_pedidos["comprador"] != 'cristian')]
+
+
+'''plt.style.use('seaborn')
+plot = plt.plot_date(df_comprasGR.index, df_compras['total'], linestyle='solid') # Creamos la tabla con los meses y los datos de y
+plt.gcf().autofmt_xdate()
+
+date_format = mpl_dates.DateFormatter('%b, %d %Y')
+plt.gca().xaxis.set_major_formatter(date_format)    # GetCorrectAxes
+
+plt.show()  # Muestra una ventana con la grafica'''
 
 # ------- FLASK APP ---------
 # --------------------------------------------------------------------------------------------------
@@ -152,11 +172,11 @@ def before_request():
     print(session, "loginbefore")
     g.user = None
 
-    if 'user_id' in session:
+'''    if 'user_id' in session:
         user = [x for x in all_users if x.id == session['user_id']][0]
         g.user = user
         pedidos = [x for x in all_Orders if x.comprador == g.user.username]
-        print(pedidos)
+        print(pedidos)'''
 
 
 @app.route('/')
@@ -245,3 +265,6 @@ def profile_supplier():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
