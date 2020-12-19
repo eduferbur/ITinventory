@@ -5,7 +5,8 @@ from flask import (Flask,
                    render_template,
                    request,
                    session,  # gestion de usuarios frontend-backend
-                   url_for
+                   url_for,
+                    Response
                    )
 
 from flask_sqlalchemy import SQLAlchemy
@@ -14,6 +15,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib import dates as mpl_dates
 from datetime import datetime, date, time, timedelta
+from matplotlib.figure import Figure
+import io
 
 
 app = Flask(__name__)
@@ -92,7 +95,7 @@ class Inventario(db.Model):
         return f'Artículo: {self.caracteristicas}: {self.objeto}'
 
 
-'''class Pedidos(db.Model):
+class Pedidos(db.Model):
     __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime)
@@ -112,7 +115,7 @@ all_admins = Admins.query.all()
 all_clients = Clients.query.all()
 all_suppliers = Suppliers.query.all()
 all_devices = Inventario.query.all()
-# all_Orders = Pedidos.query.all()
+all_Orders = Pedidos.query.all()
 
 
 # Extrayendo la lista total de usernames
@@ -139,22 +142,39 @@ for names in all_proveedores:
 
 # ------- PLOTS ---------
 # --------------------------------------------------------------------------------------------------
-# Preparamos la TABLA PEDIDOS
-df_pedidos = pd.read_sql_table('PEDIDOS', con=db.engine)
+# Leemos desde la base de datos
+df_pedidos = pd.read_sql_table('PEDIDOS', con=db.engine) # Indicamos la tabla a coger
+df_inventario = pd.read_sql_table('INVENTARIO', con=db.engine)
+
 df_pedidos['fecha'] = pd.to_datetime(df_pedidos['fecha'], format='%Y-%m-%d %H:%M:%S')
 df_pedidos.sort_values('fecha', inplace=True) # el inplace hace: df['fecha'] = df.sort...
 
 
 
 df_compras = df_pedidos[(df_pedidos["comprador"] == 'eduferbur') | (df_pedidos["comprador"] == 'cristian')]
-print(df_compras)
-df_comprasGR = df_compras.groupby(pd.Grouper(key='fecha', freq="M")).agg({"total": 'sum'})
+# print(df_compras)
+df_all_comprasGR = df_compras.groupby(pd.Grouper(key='fecha', freq="M")).agg({"total": 'sum'})
 # del df_comprasGR['id']
-df_comprasGR.index = pd.to_datetime(df_comprasGR.index, format='%Y-%m-%d')
-print(df_comprasGR)
 
-df_ventas = df_pedidos[(df_pedidos["comprador"] != 'eduferbur') & (df_pedidos["comprador"] != 'cristian')]
+df_all_comprasGR['Clase'] = 'compra'
+# print(df_comprasGR)
 
+
+df_all_ventas = df_pedidos[(df_pedidos["comprador"] != 'eduferbur') & (df_pedidos["comprador"] != 'cristian')]
+
+df_all_ventasGR = df_all_ventas.resample('M', on='fecha').agg({"total": 'sum'})
+df_all_ventasGR['Clase'] = 'venta'
+# print(df_all_ventasGR)
+
+df_resumen_compra_venta = pd.concat([df_all_comprasGR, df_all_ventasGR])
+df_resumen_compra_venta.sort_values('fecha', inplace=True)
+
+inventario_stock_min = 2
+df_inventario_reponer = df_inventario[(df_inventario["stock"] <= inventario_stock_min)] # Elementos que necesitan ser repuestos
+
+
+print(df_resumen_compra_venta)
+print(df_inventario_reponer)
 
 '''plt.style.use('seaborn')
 plot = plt.plot_date(df_comprasGR.index, df_compras['total'], linestyle='solid') # Creamos la tabla con los meses y los datos de y
@@ -169,14 +189,14 @@ plt.show()  # Muestra una ventana con la grafica'''
 # --------------------------------------------------------------------------------------------------
 @app.before_request  # Aun no sé para qué hace esto
 def before_request():
-    print(session, "loginbefore")
+    # print(session, "loginbefore")
     g.user = None
 
-'''    if 'user_id' in session:
+    if 'user_id' in session:
         user = [x for x in all_users if x.id == session['user_id']][0]
         g.user = user
         pedidos = [x for x in all_Orders if x.comprador == g.user.username]
-        print(pedidos)'''
+        # print(pedidos)
 
 
 @app.route('/')
@@ -187,7 +207,7 @@ def home():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # session.pop('user_id', None)
+        session.pop('user_id', None)
 
         session['username'] = request.form['username']  # Recogemos el username introducido.
         password = request.form['password']  # Recogemos la contraseña introducida
@@ -201,6 +221,7 @@ def login():
             if user and user.password == password:
                 session['user_id'] = user.id
                 session['user_rol_id'] = user.rol_id
+                # print("PRUEBA",session)
 
                 if session['user_rol_id'] == 1:
                     return redirect(url_for('profile_admin'))
@@ -242,24 +263,33 @@ def profile_admin():
         return redirect(url_for('login'))
     # Cargamos en g.user los datos del admin actual.
     g.user = [x for x in all_admins if x.username == session['username']][0]
+    print(df_resumen_compra_venta)
     return render_template('profile_admin.html')
 
 
 @app.route('/profile_client')
 def profile_client():
+
     if not g.user:
         return redirect(url_for('login'))
     # Cargamos en g.user los datos del cliente actual.
     g.user = [x for x in all_clients if x.username == session['username']][0]
+    # print(g.user.username)
+    compras_cliente = df_pedidos[(df_pedidos["comprador"] == g.user.username)]
+    print(compras_cliente)
+
     return render_template('profile_client.html')
 
 
 @app.route('/profile_supplier')
 def profile_supplier():
+    print("Aqui?", g.user.username)
     if not g.user:
         return redirect(url_for('login'))
     # Cargamos en g.user los datos del proveedor actual.
     g.user = [x for x in all_suppliers if x.username == session['username']][0]
+    ventas_proveedor = df_pedidos[(df_pedidos["proveedor"] == g.user.username)]
+    print(ventas_proveedor)
     return render_template('profile_supplier.html')
 
 
