@@ -1,25 +1,71 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Profile Dealer</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
-    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
-  </head>
-  <body>
-    <section class="hero is-success is-fullheight">
-      <div class="hero-body">
-        <div class="container">
-          <h1 class="title">
-            {{g.user.username}}'s Profile
-          </h1>
-          <h2 class="subtitle">
-            You are user number #{{g.user.id}}
-          </h2>
-          <a href="/logout">Logout</a>
-        </div>
-      </div>
-    </section>
-  </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>INDEX</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+<div id="contenedor">
+
+        <header>
+            <h1>Eduferbur's Company</h1>
+<!--            <a class = "logout" href="/logout">Logout</a>-->
+
+
+        </header>
+        <nav>
+            <h2>Bienvenido {{g.user.username}}</h2>
+            <h3>Es un placer tenerlo de vuelta</h3>
+
+        </nav>
+        <section id="contenido">
+            <article>
+                    <h3>
+                        Gráfica de pedidos hasta la fecha:
+                    </h3>
+                <section id="grafica">
+                  <img class="grafica" src="/plot.png" alt="my plot">
+                </section>
+<!--                <section>-->
+<!--                    <h3> Beneficio final: {{beneficio}}€</h3>-->
+
+<!--                </section>-->
+            </article>
+        </section>
+        <aside>
+            <h3>SUS DATOS DE USUARIO:</h3>
+            <table>
+                  <tr>
+                    <td><b>CIF: </b></td>
+                    <td> </td>
+                    <td>{{g.user.cif}}</td>
+                  </tr>
+                  <tr>
+                    <td><b>Nombre Fiscal: </b></td>
+                    <td> </td>
+                    <td>{{g.user.nombreFiscal}}</td>
+                  </tr>
+                                <tr>
+                    <td><b>Descuento: </b></td>
+                    <td> </td>
+                    <td>{{g.user.descuento}}%</td>
+                  </tr>
+            </table>
+            <br>
+            <h3>Últimos 5 pedidos:</h3>
+          <div class="tabla_reponer">
+            {% for table in tables %}
+               {{ table|safe }}
+            {% endfor %}
+          </div>
+        </aside>
+
+        <footer>
+            <h4>Cerrar sessión: <a class="micuenta" href="/">Logout</a></h4>
+            <p>Copyright EFB- Tokio School 2020 - Todos los derechos reservados</p>
+        </footer>
+    </div>
+</body>
+
 </html>

@@ -153,7 +153,7 @@ df_pedidos = pd.read_sql_table('PEDIDOS', con=db.engine) # Indicamos la tabla a 
 df_inventario = pd.read_sql_table('INVENTARIO', con=db.engine)
 
 df_pedidos['fecha'] = pd.to_datetime(df_pedidos['fecha'], format='%Y-%m-%d %H:%M:%S')
-df_pedidos.sort_values('fecha', inplace=True) # el inplace hace: df['fecha'] = df.sort...
+df_pedidos.sort_values('fecha', inplace=True) # el inplace ahorra poner: df['fecha'] = df.sort...
 
 
 
@@ -203,7 +203,10 @@ for acu in range(len(ventas_totales)):
     ventas_totalesACU.append(suma)
 
 beneficio_final = round(ventas_totalesACU[-1] - compras_totalesACU[-1], 2)
-print(beneficio_final, 'beneficiooooooooo')
+# print(beneficio_final, 'beneficiooooooooo')
+
+compras_cliente = df_pedidos
+
 
 # ------- FLASK APP ---------
 # --------------------------------------------------------------------------------------------------
@@ -267,11 +270,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/profile')
-def profile():
-    return render_template('index2.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")])
-
-
 @app.route('/profile_admin')
 def profile_admin():
     if not g.user:
@@ -279,7 +277,7 @@ def profile_admin():
     # Cargamos en g.user los datos del admin actual.
     g.user = [x for x in all_admins if x.username == session['username']][0]
 
-    print(df_resumen_compra_venta)
+    # print(df_resumen_compra_venta)
     return render_template('profile_admin.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")], beneficio=beneficio_final)
     # return render_template('profile_admin.html')
 
@@ -293,37 +291,55 @@ def profile_client():
     g.user = [x for x in all_clients if x.username == session['username']][0]
     # print(g.user.username)
     compras_cliente = df_pedidos[(df_pedidos["comprador"] == g.user.username)]
-    print(compras_cliente)
-
-    return render_template('profile_client.html')
+    compras_cliente = compras_cliente[['fecha', 'total']].head()
+    return render_template('profile_client.html', tables=[compras_cliente.to_html(classes='data', header="true")])
+    # return render_template('profile_client.html')
 
 
 @app.route('/profile_supplier')
 def profile_supplier():
-    print("Aqui?", g.user.username)
+    # print("Aqui?", g.user.username)
     if not g.user:
         return redirect(url_for('login'))
     # Cargamos en g.user los datos del proveedor actual.
     g.user = [x for x in all_suppliers if x.username == session['username']][0]
     ventas_proveedor = df_pedidos[(df_pedidos["proveedor"] == g.user.username)]
-    print(ventas_proveedor)
-    return render_template('profile_supplier.html')
+    ventas_proveedor = ventas_proveedor[['fecha', 'total']].head()
+    return render_template('profile_supplier.html', tables=[ventas_proveedor.to_html(classes='data', header="true")])
+    # return render_template('profile_supplier.html')
 
 
 @app.route('/plot.png')
 def plot_png():
-    fig = crear_grafica(compras_fechas, compras_totalesACU, ventas_fechas, ventas_totalesACU)
+    fig = None
+    if session['user_rol_id'] == 1: # Admin
+        fig = crear_grafica(compras_fechas, compras_totalesACU, "plot",  "Compras", ventas_fechas, ventas_totalesACU, "Ventas")
+    elif session['user_rol_id'] == 2: # Cliente
+        compras_cliente = df_pedidos[(df_pedidos["comprador"] == g.user.username)]
+        # compras_cliente = compras_cliente[compras_cliente["total"] != 0]
+
+        fig = crear_grafica(compras_cliente['fecha'], compras_cliente['total'], "bar", "Pedidos")
+        # print(df_all_comprasGR)
+    elif session['user_rol_id'] == 3: # Proveedor
+        compras_a_proveedor = df_pedidos[(df_pedidos["proveedor"] == g.user.username)]
+        # compras_a_proveedor = compras_a_proveedor[compras_a_proveedor["total"] != 0]
+        fig = crear_grafica(compras_a_proveedor['fecha'], compras_a_proveedor['total'], "bar", "Pedidos")
+
     output = io.BytesIO()
     FigureCanvas(fig).print_png(output)
     del fig
     return Response(output.getvalue(), mimetype='image/png')
 
-def crear_grafica(A_eje_x, A_eje_y, B_eje_x=None, B_eje_y=None):
+def crear_grafica(A_eje_x, A_eje_y, tipo="plot", A_label="", B_eje_x=None, B_eje_y=None, B_label=""):
     # Queremos gráficas acumuladas
     fig = Figure()
     axis = fig.add_subplot(1, 1, 1)
-    axis.plot(A_eje_x, A_eje_y, label="Compras")
-    axis.plot(B_eje_x, B_eje_y, label="Ventas")
+    if tipo =="bar":
+        axis.bar(A_eje_x, A_eje_y, label=A_label, width=8)
+        # print(A_eje_x, "fechasssss")
+    else:
+        axis.plot(A_eje_x, A_eje_y, label=A_label)
+        axis.plot(B_eje_x, B_eje_y, label=B_label)
     axis.legend()
     return fig
 
