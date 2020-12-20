@@ -11,10 +11,27 @@
     <section class="hero is-success is-fullheight">
       <div class="hero-body">
         <div class="container">
-          <h1 class="title"> Hola {{g.user.username}}</h1>
+          <h1 class="title">
+            Bienvenido {{g.user.username}}.
+          </h1>
           <h2 class="subtitle">
-            Su CIF es el  #{{g.user.cif}}
+            Es un placer tenerlo de vuelta
           </h2>
+          <table>
+            <tr>
+              <td><b>SUS DATOS:</b></td>
+          </tr>
+          <tr>
+            <td><b>CIF: </b></td>
+            <td> </td>
+            <td>{{g.user.cif}}</td>
+          </tr>
+          <tr>
+            <td>Nombre Fiscal: </td>
+            <td> </td>
+            <td>{{g.user.nombreFiscal}}</td>
+          </tr>
+                </table>
 
           <a href="/logout">Logout</a>
         </div>

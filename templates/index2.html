@@ -9,40 +9,56 @@
 <div id="contenedor">
 
         <header>
-            <h1> Nombre de nuestra empresa</h1>
+            <h1>Eduferbur's Company</h1>
+<!--            <a class = "logout" href="/logout">Logout</a>-->
+
+
         </header>
         <nav>
-            <h2> Esto es el aside</h2>
+            <h2>Bienvenido {{g.user.username}}</h2>
+            <h3>Es un placer tenerlo de vuelta</h3>
+
         </nav>
         <section id="contenido">
             <article>
                     <h3>
-                        Esta página es el inicio
+                        Resumen del mes:
                     </h3>
-                <section>
-                    <h2>
-                        Y esta es nuestra sección article
-                    </h2>
-                    <p>Los elementos de encabezado implementan seis niveles blap>
+                <section id="grafica">
+                  <img class="grafica" src="/plot.png" alt="my plot">
                 </section>
                 <section>
-                    <p>
-                        Para hacer Login click <a href="/login">aquí</a>
-                    </p>
+                    <h3> Beneficio final: {{beneficio}}€</h3>
 
                 </section>
             </article>
         </section>
         <aside>
-
-            <p>
-            Publicidad
-            </p>
+            <h3>SUS DATOS DE REGISTRO:</h3>
+            <table>
+                  <tr>
+                    <td><b>CIF: </b></td>
+                    <td> </td>
+                    <td>{{g.user.cif}}</td>
+                  </tr>
+                  <tr>
+                    <td><b>Nombre Fiscal: </b></td>
+                    <td> </td>
+                    <td>{{g.user.nombreFiscal}}</td>
+                  </tr>
+            </table>
+            <br><br>
+            <h3>Inventario en stock mínimo</h3>
+          <div class="tabla_reponer">
+            {% for table in tables %}
+               {{ table|safe }}
+            {% endfor %}
+          </div>
         </aside>
 
         <footer>
-            <h4>Copyright - Todos los derechos reservados</h4>
-            <p>Para más información <a href="micuenta.html">Mi cuenta</a></p>
+            <h4>Cerrar sessión: <a class="micuenta" href="/">Logout</a></h4>
+            <p>Copyright EFB- Tokio School 2020 - Todos los derechos reservados</p>
         </footer>
     </div>
 </body>

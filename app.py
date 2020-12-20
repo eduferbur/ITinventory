@@ -21,7 +21,8 @@ from matplotlib import pyplot as plt
 from matplotlib import dates as mpl_dates
 from datetime import datetime, date, time, timedelta
 
-
+# Variables globales
+global generar_grafica_una_vez
 
 
 app = Flask(__name__)
@@ -188,14 +189,21 @@ compras_totales = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] 
 ventas_fechas = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'venta'].index)
 ventas_totales = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'venta']['total'])
 
-'''plt.style.use('seaborn')
-plot_prueba = plt.plot_date(fechas, totales, linestyle='solid') # Creamos la tabla con los meses y los datos de y
-plt.gcf().autofmt_xdate()
+compras_totalesACU = []
+ventas_totalesACU = []
 
-date_format = mpl_dates.DateFormatter('%b, %d %Y')
-plt.gca().xaxis.set_major_formatter(date_format)    # GetCorrectAxes
+suma = 0
+for acu in range(len(compras_totales)):
+    suma += compras_totales[acu]
+    compras_totalesACU.append(suma)
 
-plt.show()  # Muestra una ventana con la grafica'''
+suma = 0
+for acu in range(len(ventas_totales)):
+    suma += ventas_totales[acu]
+    ventas_totalesACU.append(suma)
+
+beneficio_final = round(ventas_totalesACU[-1] - compras_totalesACU[-1], 2)
+print(beneficio_final, 'beneficiooooooooo')
 
 # ------- FLASK APP ---------
 # --------------------------------------------------------------------------------------------------
@@ -207,7 +215,6 @@ def before_request():
     if 'user_id' in session:
         user = [x for x in all_users if x.id == session['user_id']][0]
         g.user = user
-
 
 
 @app.route('/')
@@ -248,7 +255,7 @@ def login():
         else:
             user = False
 
-    # Si llego aquí, el login no ha ido bien y calgo login de nuevo
+    # Si llego aquí, el login no ha ido bien asi que voy a login de nuevo
     session.pop("user", None)
     session.pop('username', None)
     return render_template('login.html')
@@ -262,7 +269,7 @@ def logout():
 
 @app.route('/profile')
 def profile():
-    return render_template('profile.html')
+    return render_template('index2.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")])
 
 
 @app.route('/profile_admin')
@@ -273,7 +280,7 @@ def profile_admin():
     g.user = [x for x in all_admins if x.username == session['username']][0]
 
     print(df_resumen_compra_venta)
-    return render_template('profile_admin.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")])
+    return render_template('profile_admin.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")], beneficio=beneficio_final)
     # return render_template('profile_admin.html')
 
 
@@ -303,23 +310,22 @@ def profile_supplier():
     return render_template('profile_supplier.html')
 
 
-
 @app.route('/plot.png')
 def plot_png():
-    fig = crear_grafica(compras_fechas, compras_totales)
+    fig = crear_grafica(compras_fechas, compras_totalesACU, ventas_fechas, ventas_totalesACU)
     output = io.BytesIO()
     FigureCanvas(fig).print_png(output)
+    del fig
     return Response(output.getvalue(), mimetype='image/png')
 
-def crear_grafica(A_eje_x, A_eje_y):
+def crear_grafica(A_eje_x, A_eje_y, B_eje_x=None, B_eje_y=None):
+    # Queremos gráficas acumuladas
     fig = Figure()
     axis = fig.add_subplot(1, 1, 1)
-    xs = A_eje_x
-    ys = A_eje_y
-    axis.plot(xs, ys)
+    axis.plot(A_eje_x, A_eje_y, label="Compras")
+    axis.plot(B_eje_x, B_eje_y, label="Ventas")
+    axis.legend()
     return fig
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
