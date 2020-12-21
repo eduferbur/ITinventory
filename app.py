@@ -1,4 +1,3 @@
-
 from flask import (Flask,
                    g,  # Variables globales entre app.py y html
                    redirect,
@@ -6,24 +5,14 @@ from flask import (Flask,
                    request,
                    session,  # gestion de usuarios frontend-backend
                    url_for,
-                    Response
+                   Response
                    )
 
 from matplotlib.figure import Figure
 import io
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-import random
-
 from flask_sqlalchemy import SQLAlchemy
-import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
-from matplotlib import dates as mpl_dates
-from datetime import datetime, date, time, timedelta
-
-# Variables globales
-global generar_grafica_una_vez
-
 
 app = Flask(__name__)
 app.secret_key = 'somesecretkeythatonlyishouldknow'
@@ -88,41 +77,14 @@ class Suppliers(db.Model):
         pass
 
 
-'''class Inventario(db.Model):
-    __tablename__ = "INVENTARIO"  # Creamos la estructura, la tabla
-    id = db.Column(db.Integer, primary_key=True)
-    objeto = db.Column(db.String(200))
-    caracteristicas = db.Column(db.String(200))
-    fabricante = db.Column(db.String(200))
-    ref = db.Column(db.String(200))
-    stock = db.Column(db.String(200))
-
-    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
-        return f'Artículo: {self.caracteristicas}: {self.objeto}'''
-
-
-'''class Pedidos(db.Model):
-    __tablename__ = "PEDIDOS"  # Creamos la estructura, la tabla
-    id = db.Column(db.Integer, primary_key=True)
-    fecha = db.Column(db.DateTime)
-    comprador = db.Column(db.String(200))
-    proveedor = db.Column(db.String(200))
-    total = db.Column(db.String(200))
-
-    def __repr__(self):  # Sacado de la web de Alchemy, para que me dé el nombre
-        return f'Pedido del: {self.fecha}, de {self.comprador} a {self.proveedor}. Total: {self.total} €'''
-
-
 db.create_all()
 db.session.commit()
+
 # Lecturas de las tablas y almacenado de sus registros
 all_users = Usuarios.query.all()
 all_admins = Admins.query.all()
 all_clients = Clients.query.all()
 all_suppliers = Suppliers.query.all()
-# all_devices = Inventario.query.all()
-# all_Orders = Pedidos.query.all()
-
 
 # Extrayendo la lista total de usernames
 all_Usernames = []
@@ -134,7 +96,7 @@ En_lista = Usuarios.query.filter(~Usuarios.rol_id.in_([1, 2])).first()  # Prueba
 # print(En_lista)
 
 
-# -------  CONFIGURAMOS LA BASE DE DATOS. FIN ------------------------------------------------------
+# -------  FIN DE CONFIGURAMOS LA BASE DE DATOS ------------------------------------------------------
 # --------------------------------------------------------------------------------------------------
 
 
@@ -146,41 +108,32 @@ all_proveedores = Usuarios.query.filter(Usuarios.rol_id == 3)
 for names in all_proveedores:
     nombres_proveedores.append(names.username)
 
-# ------- PLOTS ---------
+# ------- TABLAS CON PANDAS---------
 # --------------------------------------------------------------------------------------------------
 # Leemos desde la base de datos
-df_pedidos = pd.read_sql_table('PEDIDOS', con=db.engine) # Indicamos la tabla a coger
+df_pedidos = pd.read_sql_table('PEDIDOS', con=db.engine)  # Indicamos la tabla a coger
 df_inventario = pd.read_sql_table('INVENTARIO', con=db.engine)
 
 df_pedidos['fecha'] = pd.to_datetime(df_pedidos['fecha'], format='%Y-%m-%d %H:%M:%S')
-df_pedidos.sort_values('fecha', inplace=True) # el inplace ahorra poner: df['fecha'] = df.sort...
-
-
+df_pedidos.sort_values('fecha', inplace=True)  # el inplace ahorra poner: df['fecha'] = df.sort...
 
 df_compras = df_pedidos[(df_pedidos["comprador"] == 'eduferbur') | (df_pedidos["comprador"] == 'cristian')]
 # print(df_compras)
 df_all_comprasGR = df_compras.groupby(pd.Grouper(key='fecha', freq="M")).agg({"total": 'sum'})
-# del df_comprasGR['id']
-
-df_all_comprasGR['Clase'] = 'compra'
-# print(df_comprasGR)
-
+df_all_comprasGR['Clase'] = 'compra'  # Añadimos columna para unificar luego con venta
 
 df_all_ventas = df_pedidos[(df_pedidos["comprador"] != 'eduferbur') & (df_pedidos["comprador"] != 'cristian')]
 
-df_all_ventasGR = df_all_ventas.resample('M', on='fecha').agg({"total": 'sum'})
+df_all_ventasGR = df_all_ventas.resample('M', on='fecha').agg({"total": 'sum'}) # Otra forma de agrupar por meses
 df_all_ventasGR['Clase'] = 'venta'
-# print(df_all_ventasGR)
 
-df_resumen_compra_venta = pd.concat([df_all_comprasGR, df_all_ventasGR])
+df_resumen_compra_venta = pd.concat([df_all_comprasGR, df_all_ventasGR])  # Unificamos compras y ventas.
 df_resumen_compra_venta.sort_values('fecha', inplace=True)
 
-inventario_stock_min = 2
-df_inventario_reponer = df_inventario[(df_inventario["stock"] <= inventario_stock_min)] # Elementos que necesitan ser repuestos
-del df_inventario_reponer['id']
-
-print(df_resumen_compra_venta)
-print(df_inventario_reponer)
+inventario_stock_min = 2  # Valor mínimo de stock donde sadrá un aviso en la pag. de admin
+df_inventario_reponer = df_inventario[
+    (df_inventario["stock"] <= inventario_stock_min)]  # Elementos que necesitan ser repuestos
+del df_inventario_reponer['id']  # Eliminamos la columna id para que la tabla quede más clara
 
 # Extraemos la info del resumen compra/venta para la tabla del admin.
 compras_fechas = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] == 'compra'].index)
@@ -192,6 +145,7 @@ ventas_totales = list(df_resumen_compra_venta[df_resumen_compra_venta["Clase"] =
 compras_totalesACU = []
 ventas_totalesACU = []
 
+# Para la compra/venta de la página Admin, queremos el acumulado del año:
 suma = 0
 for acu in range(len(compras_totales)):
     suma += compras_totales[acu]
@@ -202,10 +156,10 @@ for acu in range(len(ventas_totales)):
     suma += ventas_totales[acu]
     ventas_totalesACU.append(suma)
 
-beneficio_final = round(ventas_totalesACU[-1] - compras_totalesACU[-1], 2)
-# print(beneficio_final, 'beneficiooooooooo')
+beneficio_final = round(ventas_totalesACU[-1] - compras_totalesACU[-1], 2)  # Beneficio final de la compra/venta
 
-compras_cliente = df_pedidos
+
+# compras_cliente = df_pedidos
 
 
 # ------- FLASK APP ---------
@@ -251,7 +205,7 @@ def login():
                 elif session['user_rol_id'] == 3:
                     return redirect(url_for('profile_supplier'))
                 else:
-                    print(f"Error, user_rol_id={session['user_id']}  no válido")
+                    print(f"Error ID=2, user_rol_id={session['user_id']}  no válido")
                     session['user_id'] = None
             else:
                 user = False  # Si no coincide usuario y contraseña, borro el usuario de sesion
@@ -276,75 +230,71 @@ def profile_admin():
         return redirect(url_for('login'))
     # Cargamos en g.user los datos del admin actual.
     g.user = [x for x in all_admins if x.username == session['username']][0]
-
-    # print(df_resumen_compra_venta)
-    return render_template('profile_admin.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")], beneficio=beneficio_final)
-    # return render_template('profile_admin.html')
+    return render_template('profile_admin.html', tables=[df_inventario_reponer.to_html(classes='data', header="true")],
+                           beneficio=beneficio_final)
 
 
 @app.route('/profile_client')
 def profile_client():
-
     if not g.user:
         return redirect(url_for('login'))
+
     # Cargamos en g.user los datos del cliente actual.
     g.user = [x for x in all_clients if x.username == session['username']][0]
-    # print(g.user.username)
     compras_cliente = df_pedidos[(df_pedidos["comprador"] == g.user.username)]
-    compras_cliente = compras_cliente[['fecha', 'total']].head()
+    compras_cliente = compras_cliente[['fecha', 'total']].head()  # tabla con los últimos 5 pedidos del cliente
     return render_template('profile_client.html', tables=[compras_cliente.to_html(classes='data', header="true")])
-    # return render_template('profile_client.html')
 
 
 @app.route('/profile_supplier')
 def profile_supplier():
-    # print("Aqui?", g.user.username)
     if not g.user:
         return redirect(url_for('login'))
+
     # Cargamos en g.user los datos del proveedor actual.
     g.user = [x for x in all_suppliers if x.username == session['username']][0]
     ventas_proveedor = df_pedidos[(df_pedidos["proveedor"] == g.user.username)]
     ventas_proveedor = ventas_proveedor[['fecha', 'total']].head()
     return render_template('profile_supplier.html', tables=[ventas_proveedor.to_html(classes='data', header="true")])
-    # return render_template('profile_supplier.html')
 
 
 @app.route('/plot.png')
 def plot_png():
     fig = None
-    if session['user_rol_id'] == 1: # Admin
-        fig = crear_grafica(compras_fechas, compras_totalesACU, "plot",  "Compras", ventas_fechas, ventas_totalesACU, "Ventas")
-    elif session['user_rol_id'] == 2: # Cliente
+    if session['user_rol_id'] == 1:  # Admin
+        fig = crear_grafica(compras_fechas, compras_totalesACU, "plot", "Compras", ventas_fechas, ventas_totalesACU,
+                            "Ventas")
+    elif session['user_rol_id'] == 2:  # Cliente
         compras_cliente = df_pedidos[(df_pedidos["comprador"] == g.user.username)]
-        # compras_cliente = compras_cliente[compras_cliente["total"] != 0]
-
-        fig = crear_grafica(compras_cliente['fecha'], compras_cliente['total'], "bar", "Pedidos")
+        compras_cliente = compras_cliente[compras_cliente["total"] != 0] # Eliminamos = 0€
+        compras_cliente = compras_cliente.groupby(pd.Grouper(key='fecha', freq="M")).agg({"total": 'sum'})
+        fig = crear_grafica(compras_cliente.index, compras_cliente['total'], "bar", "Pedidos")
         # print(df_all_comprasGR)
-    elif session['user_rol_id'] == 3: # Proveedor
+    elif session['user_rol_id'] == 3:  # Proveedor
         compras_a_proveedor = df_pedidos[(df_pedidos["proveedor"] == g.user.username)]
-        # compras_a_proveedor = compras_a_proveedor[compras_a_proveedor["total"] != 0]
-        fig = crear_grafica(compras_a_proveedor['fecha'], compras_a_proveedor['total'], "bar", "Pedidos")
+        compras_a_proveedor = compras_a_proveedor[compras_a_proveedor["total"] != 0] # Eliminamos = 0€
+        compras_a_proveedor = compras_a_proveedor.groupby(pd.Grouper(key='fecha', freq="M")).agg({"total": 'sum'})
+        fig = crear_grafica(compras_a_proveedor.index, compras_a_proveedor['total'], "bar", "Pedidos")
+    else:
+        print("Algo no contemplrado ha ocurrido. ID:1")
 
     output = io.BytesIO()
     FigureCanvas(fig).print_png(output)
-    del fig
     return Response(output.getvalue(), mimetype='image/png')
+
 
 def crear_grafica(A_eje_x, A_eje_y, tipo="plot", A_label="", B_eje_x=None, B_eje_y=None, B_label=""):
     # Queremos gráficas acumuladas
     fig = Figure()
     axis = fig.add_subplot(1, 1, 1)
-    if tipo =="bar":
-        axis.bar(A_eje_x, A_eje_y, label=A_label, width=8)
-        # print(A_eje_x, "fechasssss")
+    if tipo == "bar":
+        axis.bar(A_eje_x, A_eje_y, label=A_label, width=10)
     else:
         axis.plot(A_eje_x, A_eje_y, label=A_label)
         axis.plot(B_eje_x, B_eje_y, label=B_label)
     axis.legend()
     return fig
 
+
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
